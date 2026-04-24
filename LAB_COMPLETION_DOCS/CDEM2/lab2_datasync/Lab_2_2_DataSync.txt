@@ -1,0 +1,114 @@
+=== LAB 2.2: DATASYNC BATCH INGESTION COMPLETE ===
+
+EC2 INSTANCE DETAILS:
+EC2 Instance ID: i-00c5c469d3d9f0bcc
+Instance State: Running
+Subnet: private-subnet-1b
+
+--------------------------------------
+
+=== LAB: AWS DATASYNC S3 LOCATIONS DOCUMENTATION ===
+Date Updated: April 18, 2026
+AWS Account ID: 108782069549
+
+DATASYNC IAM ROLE:
+├─ Role Name: AWSDataSyncS3BucketAccess-data-lake-1087-8206-9549-f9d3c
+├─ ARN: arn:aws:iam::108782069549:role/service-role/AWSDataSyncS3BucketAccess-data-lake-1087-8206-9549-f9d3c
+├─ Purpose: Grants AWS DataSync access to S3 bucket locations
+└─ Service: AWS DataSync
+
+S3 LOCATION 1 – RAW ZONE:
+├─ Location ID: loc-01745baa063ab8ff9
+├─ Location ARN: arn:aws:datasync:us-east-1:108782069549:location/loc-01745baa063ab8ff9
+├─ Type: Amazon S3
+├─ Bucket Name: data-lake-1087-8206-9549
+├─ Path: /raw/
+├─ Storage Class: Standard
+├─ Region: us-east-1
+├─ IAM Role: AWSDataSyncS3BucketAccess-data-lake-1087-8206-9549-f9d3c
+└─ Purpose: Raw data ingestion zone
+
+S3 LOCATION 2 – PROCESSED ZONE:
+├─ Location ID: loc-00a1f5226a0156007
+├─ Location ARN: arn:aws:datasync:us-east-1:108782069549:location/loc-00a1f5226a0156007
+├─ Type: Amazon S3
+├─ Bucket Name: data-lake-1087-8206-9549
+├─ Path: /processed/
+├─ Storage Class: Standard
+├─ Region: us-east-1
+├─ IAM Role: AWSDataSyncS3BucketAccess-data-lake-1087-8206-9549-f9d3c
+├─ Tag Name: aws-s3-processed-location
+└─ Purpose: Processed / transformed data zone
+
+TASK CONFIGURATION:
+Task Name: raw-to-processed-sync
+Task Mode: Sync (Incremental)
+Schedule: Daily at 03:00 UTC
+Verification: Data integrity enabled (checksum)
+CloudWatch: Logging enabled
+Status: Running successfully
+
+ARCHITECTURE SUMMARY:
+data-lake-1087-8206-9549
+├─ /raw/ → Incoming source files
+└─ /processed/ → Cleaned / transformed datasets
+
+--------------------------------------
+
+=== INITIAL DATA SYNC EXECUTION ===
+
+├─ Status: Success
+├─ Files examined: 3
+├─ Files transferred: 3
+├─ Files verified: 3
+├─ Files skipped: 0
+├─ Bytes transferred: 927 B
+├─ Transfer time: ~2 minutes 46 seconds (execution window)
+├─ Data throughput: 143.85 B/s
+├─ File throughput: 0.47 file/s
+├─ Data verification: Passed (100% match)
+└─ Errors: 0
+
+--------------------------------------
+
+=== INCREMENTAL SYNC EXECUTION ===
+
+├─ Status: Success
+├─ Files examined: 4
+├─ Files copied: 1
+├─ Files skipped: 3
+├─ New file detected: new_customers.csv
+├─ Bytes transferred: 250 B
+├─ Verification: Passed
+└─ Mode: Incremental Sync
+
+--------------------------------------
+
+AUTOMATION:
+✓ Runs daily automatically at 03:00 UTC
+✓ Only transfers changed files
+✓ Verifies data integrity (100% match)
+✓ Logs to CloudWatch
+✓ Alerts on failure via SNS
+
+COSTS:
+├─ DataSync per task: ~$0.5/hour (provisioned)
+├─ Daily run time: ~3 minutes → ~$0.025/day
+├─ Monthly estimate: ~$0.75
+├─ S3 storage: ~$0.01/month (test data)
+└─ Total estimated cost: ~$1/month
+
+BENEFITS REALIZED:
+├─ Automated daily sync (zero manual work)
+├─ Incremental transfers reduce cost
+├─ Verified data integrity (checksum validation)
+├─ CloudWatch monitoring enabled
+├─ SNS alerts on failure
+├─ Scalable architecture (supports TB+ workloads)
+└─ Enterprise-grade ETL pipeline foundation
+
+NEXT STEPS:
+1. Add real on-premises source (NFS / SMB / EFS)
+2. Connect Athena queries to processed data
+3. Build dashboards (QuickSight / Power BI)
+4. Scale to multi-source ingestion pipelines

@@ -1,0 +1,14 @@
+=== LAB 2.2: DATASYNC BATCH INGESTION ===
+Date Created: [TODAY]
+
+DATASYNC AGENT:
+Agent Name: [TO BE FILLED]
+Agent IP: [TO BE FILLED]
+Source: [TO BE FILLED]
+Destination: [TO BE FILLED]
+SYNC TASK:
+
+Task Name: [TO BE FILLED]
+Schedule: [TO BE FILLED]
+Data Transferred: [TO BE FILLED]
+Status: [TO BE FILLED]

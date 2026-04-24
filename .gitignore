@@ -1,0 +1,84 @@
+# ═══════════════════════════════════════════════════════════════
+# CRITICAL — never commit these (secrets, keys, credentials)
+# ═══════════════════════════════════════════════════════════════
+*.pem
+*.pem.pub
+*.key
+*accessKeys*
+*credentials*
+.aws/
+# AWS CLI install artifacts in labs
+aws/
+
+# ═══════════════════════════════════════════════════════════════
+# TERRAFORM — state files contain sensitive data in plain text
+# ═══════════════════════════════════════════════════════════════
+# Provider binaries + modules cache (huge, machine-specific)
+.terraform/
+.terraform.tfstate.lock.info
+
+# State files — can contain passwords, private keys, IPs
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Variable files — contain account IDs and secrets
+*.tfvars
+*.tfvars.json
+# ...but DO commit example/template files
+!*.tfvars.example
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Plan output files
+*.tfplan
+
+# Override files (local-only customizations)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# KEEP: .terraform.lock.hcl — this SHOULD be committed so teammates
+# get the exact same provider versions. Do not ignore it.
+
+# ═══════════════════════════════════════════════════════════════
+# PYTHON — virtual environments and caches
+# ═══════════════════════════════════════════════════════════════
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.Python
+
+# ═══════════════════════════════════════════════════════════════
+# LAB DATA — sample CSVs and test files (kept locally only)
+# ═══════════════════════════════════════════════════════════════
+# Be selective: some labs generate test data that shouldn't be pushed.
+# Review before committing any *.csv file.
+*.csv
+
+# ═══════════════════════════════════════════════════════════════
+# PROJECT-SPECIFIC — local-only (not pushed to repo)
+# ═══════════════════════════════════════════════════════════════
+# Claude Code project instructions (local only)
+CLAUDE.md
+# Training PDFs (course material, kept local)
+LABS_GUIDES/
+
+# ═══════════════════════════════════════════════════════════════
+# IDE / editor / OS clutter
+# ═══════════════════════════════════════════════════════════════
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

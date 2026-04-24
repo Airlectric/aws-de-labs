@@ -1,0 +1,6 @@
+# Copy this file to terraform.tfvars and fill in your own values.
+# terraform.tfvars is gitignored — never commit real account IDs.
+
+aws_region         = "us-east-1"
+aws_account_id     = "YOUR_AWS_ACCOUNT_ID"
+enable_nat_gateway = true

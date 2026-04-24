@@ -1,0 +1,50 @@
+=== LAB 2.3: KINESIS REAL-TIME STREAMING ===
+Date Created: April 19, 2026
+
+─────────────────────────────────────────────
+KINESIS DATA STREAM
+─────────────────────────────────────────────
+Stream Name:        user-events-stream
+ARN:                arn:aws:kinesis:us-east-1:108782069549:stream/user-events-stream
+Status:             Active
+Capacity Mode:      Provisioned
+Shard Count:        4
+Throughput:         4,000 events/second (4 shards × 1,000 records/sec)
+Data Retention:     1 day
+Max Record Size:    1,024 KiB
+
+─────────────────────────────────────────────
+KINESIS FIREHOSE
+─────────────────────────────────────────────
+Delivery Stream:    user-events-to-s3
+ARN:                arn:aws:firehose:us-east-1:108782069549:deliverystream/user-events-to-s3
+Status:             Active
+Source:             Amazon Kinesis Data Streams (user-events-stream)
+Destination:        Amazon S3
+Data Transformation: Not enabled
+Dynamic Partitioning: Not enabled
+Created:            April 19, 2026 at 08:55 GMT
+
+─────────────────────────────────────────────
+PYTHON CODE
+─────────────────────────────────────────────
+Producer File:      kinesis_producer.py
+Consumer File:      kinesis_consumer.py
+
+Producer Status:    Working
+Events Generated:   ~150 (30 seconds at 5 events/sec)
+
+Consumer Status:    Working
+Shards Detected:    4
+  - shardId-000000000000
+  - shardId-000000000001
+  - shardId-000000000002
+  - shardId-000000000003
+Events Processed:   [number from output]
+
+─────────────────────────────────────────────
+NOTES
+─────────────────────────────────────────────
+S3 bucket policy (DenyUnencryptedObjectUploads) was blocking Firehose writes.
+Fixed by adding the Firehose IAM role as an exception in the bucket policy deny rule.
+Firehose encryption left as NoEncryption (no added cost).
