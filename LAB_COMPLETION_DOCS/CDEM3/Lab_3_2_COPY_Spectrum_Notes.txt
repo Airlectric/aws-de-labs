@@ -1,0 +1,103 @@
+=== LAB 3.2: COPY COMMAND & SPECTRUM ===
+Date: April 26, 2026
+AWS Account ID: 108782069549
+
+---------------------------------------------------
+
+TABLES CREATED:
+
+1. customers (COPY)
+   - Rows: 10
+   - Location: Redshift cluster storage
+   - Query time: <1 second
+
+2. orders (COPY)
+   - Rows: 15
+   - Location: Redshift cluster storage
+   - Query time: <1 second
+
+3. events (COPY)
+   - Rows: 100
+   - Location: Redshift cluster storage
+   - Query time: 12ms
+
+4. events_external (SPECTRUM)
+   - Rows: 100 (same data)
+   - Load time: 0 seconds (no load)
+   - Query time: 516ms
+   - Location: s3://data-lake-prod-108782069549/raw/events/events.csv
+
+---------------------------------------------------
+
+COPY COMMAND EXAMPLES:
+
+COPY customers (customer_id, customer_name, country, signup_date, lifetime_value)
+FROM 's3://data-lake-prod-108782069549/raw/customers.csv'
+CREDENTIALS 'aws_iam_role=arn:aws:iam::108782069549:role/RedshiftIAMRole'
+FORMAT CSV
+DELIMITER ','
+IGNOREHEADER 1
+MAXERROR 100;
+
+COPY events (event_id, user_id, event_type, event_timestamp, session_id, duration_seconds)
+FROM 's3://data-lake-prod-108782069549/raw/events.csv'
+CREDENTIALS 'aws_iam_role=arn:aws:iam::108782069549:role/RedshiftIAMRole'
+FORMAT CSV
+DELIMITER ','
+IGNOREHEADER 1
+MAXERROR 100;
+
+---------------------------------------------------
+
+SPECTRUM SETUP:
+
+Glue Database: default
+External Schema: spectrum_events
+External Table: spectrum_events.events_external
+Location: s3://data-lake-prod-108782069549/raw/events/
+
+CREATE EXTERNAL SCHEMA spectrum_events
+FROM DATA CATALOG
+DATABASE 'default'
+REGION 'us-east-1'
+IAM_ROLE 'arn:aws:iam::108782069549:role/RedshiftIAMRole';
+
+CREATE EXTERNAL TABLE spectrum_events.events_external (...)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION 's3://data-lake-prod-108782069549/raw/events/'
+TABLE PROPERTIES ('skip.header.line.count'='1');
+
+---------------------------------------------------
+
+PERFORMANCE COMPARISON:
+
+COPY (events table):
+- Query time: 12ms
+- Cost: included in cluster ($0.58/hour)
+- Best for: daily/hourly analytics
+
+Spectrum (events_external):
+- Query time: 516ms (43x slower)
+- Cost: $5.00 per TB scanned
+- Best for: rare historical queries, cold data
+
+---------------------------------------------------
+
+COST ANALYSIS:
+
+Cluster: 2 x ra3.large = $0.58/hour
+S3 storage: ~$0.023/GB/month (negligible for test data)
+Spectrum queries: $5.00 per TB scanned
+Decision: Use COPY for hot data, Spectrum for cold/archive data
+
+---------------------------------------------------
+
+NOTES:
+- RedshiftIAMRole needed Glue catalog permissions added (glue:CreateTable etc.) for Spectrum
+- Glue 'default' database must exist before CREATE EXTERNAL SCHEMA works
+- Spectrum LOCATION must point to an S3 folder/prefix, not a specific file
+- LOCATION pointing to a file causes "manifest is not valid JSON" error
+- IGNOREHEADER 1 skips the CSV header row in COPY commands
+- event_timestamp used instead of timestamp (timestamp is a reserved SQL keyword)

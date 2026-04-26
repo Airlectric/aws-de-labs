@@ -17,6 +17,15 @@ data "terraform_remote_state" "cdem1" {
   }
 }
 
+# ── Glue Data Catalog Database ───────────────────────────────
+# Redshift Spectrum registers external table definitions here.
+# The 'default' database must exist before CREATE EXTERNAL SCHEMA
+# or CREATE EXTERNAL TABLE can run successfully.
+resource "aws_glue_catalog_database" "default" {
+  name        = "default"
+  description = "Default Glue Data Catalog database for Redshift Spectrum external tables"
+}
+
 # ── Lab 3.1: Redshift Cluster Setup + Security ───────────────
 module "redshift" {
   source = "../modules/redshift"
