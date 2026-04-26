@@ -29,14 +29,16 @@ module "s3" {
   redshift_iam_role_arn  = data.terraform_remote_state.cdem1.outputs.redshift_iam_role_arn
 }
 
-# # ── Lab 2.2: DataSync Batch Ingestion ────────────────────────
-# module "datasync" {
-#   source = "../modules/datasync"
+# ── Lab 2.2: DataSync Batch Ingestion ────────────────────────
+module "datasync" {
+  source = "../modules/datasync"
 
-#   aws_account_id        = var.aws_account_id
-#   aws_region            = var.aws_region
-#   data_lake_bucket_id   = module.s3.data_lake_bucket_id
-#   data_lake_bucket_arn  = module.s3.data_lake_bucket_arn
-#   private_subnet_1b_id  = data.terraform_remote_state.cdem1.outputs.private_subnet_1b_id
-#   sg_private_compute_id = data.terraform_remote_state.cdem1.outputs.sg_private_compute_id
-# }
+  aws_account_id        = var.aws_account_id
+  aws_region            = var.aws_region
+  data_lake_bucket_id   = module.s3.data_lake_bucket_id
+  data_lake_bucket_arn  = module.s3.data_lake_bucket_arn
+  private_subnet_1b_id  = data.terraform_remote_state.cdem1.outputs.private_subnet_1b_id
+  sg_private_compute_id = data.terraform_remote_state.cdem1.outputs.sg_private_compute_id
+
+  depends_on = [module.s3]
+}
