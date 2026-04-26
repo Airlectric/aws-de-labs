@@ -42,3 +42,15 @@ module "datasync" {
 
   depends_on = [module.s3]
 }
+
+# ── Lab 2.3: Kinesis Streaming Ingestion ─────────────────────
+module "kinesis" {
+  source = "../modules/kinesis"
+
+  aws_account_id       = var.aws_account_id
+  aws_region           = var.aws_region
+  data_lake_bucket_arn = module.s3.data_lake_bucket_arn
+  data_lake_bucket_id  = module.s3.data_lake_bucket_id
+
+  depends_on = [module.s3]
+}

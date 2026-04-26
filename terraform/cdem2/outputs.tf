@@ -34,3 +34,14 @@ output "datasync_sns_topic_arn" {
   description = "datasync-notifications SNS topic ARN"
   value       = module.datasync.datasync_sns_topic_arn
 }
+
+# ── Lab 2.3: Kinesis ─────────────────────────────────────────
+output "kinesis_stream_arn" {
+  description = "user-events-stream Kinesis Data Stream ARN"
+  value       = module.kinesis.kinesis_stream_arn
+}
+
+output "firehose_delivery_stream_arn" {
+  description = "user-events-to-s3 Firehose delivery stream ARN"
+  value       = module.kinesis.firehose_delivery_stream_arn
+}
