@@ -60,7 +60,9 @@ resource "aws_iam_role_policy" "datasync_s3_access" {
         "s3:PutObject",
         "s3:DeleteObject",
         "s3:ListBucket",
-        "s3:GetBucketLocation"
+        "s3:GetBucketLocation",
+        "s3:GetObjectTagging",
+        "s3:PutObjectTagging"
       ]
       Resource = [
         var.data_lake_bucket_arn,
