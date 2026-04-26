@@ -35,6 +35,11 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
+output "vpc_cidr" {
+  description = "data-platform-vpc CIDR block"
+  value       = module.vpc.vpc_cidr
+}
+
 output "public_subnet_id" {
   description = "public-subnet-1a ID"
   value       = module.vpc.public_subnet_id

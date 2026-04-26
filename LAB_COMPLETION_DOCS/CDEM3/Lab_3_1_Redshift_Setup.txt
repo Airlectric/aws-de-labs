@@ -1,0 +1,85 @@
+=== LAB 3.1: REDSHIFT CLUSTER SETUP + SECURITY ===
+Date Created: April 26, 2026
+AWS Account ID: 108782069549
+
+---------------------------------------------------
+
+REDSHIFT CLUSTER:
+Cluster Identifier: redshift-tier3-lab
+ARN: arn:aws:redshift:us-east-1:108782069549:cluster:redshift-tier3-lab
+Endpoint: redshift-tier3-lab.cktij6zsahob.us-east-1.redshift.amazonaws.com:5439
+Port: 5439
+Database: analytics
+Master Username: awsadmin
+Node Type: ra3.large
+Number of Nodes: 2
+Encryption: Enabled
+Publicly Accessible: No
+Backup Retention: 2 days
+
+---------------------------------------------------
+
+SUBNET GROUP:
+Name: redshift-tier3-subnet-group
+ARN: arn:aws:redshift:us-east-1:108782069549:subnetgroup:redshift-tier3-subnet-group
+Subnets: private-subnet-1a, private-subnet-1b
+
+---------------------------------------------------
+
+SECURITY GROUP:
+Security Group ID: sg-021b9402438227c9a
+Name: redshift-security-group
+Inbound: Port 5439 from 154.161.133.80/32 only
+
+---------------------------------------------------
+
+IAM ROLE:
+Role Name: RedshiftIAMRole (from Lab 1.1)
+ARN: arn:aws:iam::108782069549:role/RedshiftIAMRole
+
+---------------------------------------------------
+
+SECRETS MANAGER:
+Secret Name: redshift/master-password
+Secret ARN: arn:aws:secretsmanager:us-east-1:108782069549:secret:redshift/master-password-uYYx1n
+
+---------------------------------------------------
+
+S3 VPC ENDPOINT:
+Endpoint ID: vpce-007812af8474031d9 (Gateway, created in Lab 1.2)
+
+---------------------------------------------------
+
+CLOUDWATCH LOGGING:
+Logs: useractivitylog, userlog, connectionlog
+
+---------------------------------------------------
+
+VERIFICATION:
+Query 1: SELECT version(), current_user, current_database();
+Result: PostgreSQL 8.0.2 | awsadmin | analytics
+
+Query 2: CREATE TABLE customers (customer_id INTEGER, customer_name VARCHAR(100), country VARCHAR(50), signup_date DATE);
+Result: Table created successfully
+
+Query 3: INSERT INTO customers VALUES (5 rows)
+Result: 5 rows inserted
+
+Query 4: SELECT * FROM customers ORDER BY customer_id;
+Result: 5 rows returned correctly
+
+---------------------------------------------------
+
+COSTS:
+ra3.large x 2 nodes: ~$0.58/hour
+Lab duration (~4 hrs): ~$2.32
+Secrets Manager: ~$0.40/month
+Teardown: terraform destroy in terraform/cdem3/
+
+---------------------------------------------------
+
+NOTES:
+- dc2.large is being phased out in newer AWS accounts, switched to ra3.large
+- current_database requires parentheses in Redshift: current_database()
+- S3 VPC Gateway endpoint is VPC-scoped — only one allowed per service per VPC
+- RedshiftIAMRole reused from Lab 1.1, no duplicate role needed
