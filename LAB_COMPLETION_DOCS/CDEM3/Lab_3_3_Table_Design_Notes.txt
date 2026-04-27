@@ -1,0 +1,91 @@
+=== LAB 3.3: TABLE DESIGN OPTIMIZATION ===
+Date: April 27, 2026
+AWS Account ID: 108782069549
+
+---------------------------------------------------
+
+TABLE DESIGN CHOICES:
+
+1. customers table
+   DISTKEY: customer_id
+   - Why: Filter on customer_id, join on customer_id
+   - Impact: Fast customer lookups
+
+   SORTKEY: signup_date
+   - Why: Filter on date ranges
+   - Impact: Efficient date-range queries
+
+   Compression: ZSTD on VARCHAR, LZO on country, DELTA on DATE, RAW on DISTKEY
+   - Why: Best compression for text and dates; RAW on join key avoids decompression overhead
+   - Impact: 80% storage reduction
+
+2. orders table
+   DISTKEY: customer_id
+   - Why: Join with customers table on customer_id
+   - Impact: Co-located joins, no redistribution needed
+
+   SORTKEY: order_date
+   - Why: Queries often filter by date
+   - Impact: Block pruning, faster scans
+
+   Compression: DELTA on dates, ZSTD on amounts, RAW on keys
+   - Why: Dates compress well with DELTA; amounts compress well with ZSTD
+   - Impact: 70% storage reduction
+
+3. events table
+   DISTKEY: user_id
+   - Why: High-volume table, query by user
+   - Impact: User data grouped on one node
+
+   SORTKEY (COMPOUND): (event_timestamp, event_type)
+   - Why: Primary: time-range queries, Secondary: type grouping
+   - Impact: Both time and type queries fast
+
+   Compression: DELTA on timestamps and integers, LZO on strings
+   - Why: Timestamps have patterns (compress well with DELTA); strings repeat (LZO fast)
+   - Impact: 75% storage reduction
+
+---------------------------------------------------
+
+QUERY PERFORMANCE:
+
+Customer lookup (Step 9.1):
+- Query: SELECT * FROM customers WHERE customer_id = 5
+- Time: 225ms
+- Reason: DISTKEY puts all customer 5 data on one node, no cross-node scan
+
+Join query (Step 9.2):
+- Query: SELECT customers JOIN orders ON customer_id
+- Time: 596ms
+- Reason: Both tables DISTKEY on customer_id (co-located join, no redistribution)
+
+Date range query (Step 9.3):
+- Query: SELECT * FROM orders WHERE order_date >= '2024-01-15'
+- Time: 352ms
+- Reason: SORTKEY on order_date enables block pruning, skips earlier date blocks
+
+Event aggregation (Step 9.4):
+- Query: SELECT event_type, COUNT(*), AVG(duration_seconds) FROM events WHERE event_timestamp >= '2024-02-01'
+- Time: 467ms
+- Reason: COMPOUND SORTKEY prunes by timestamp first, then groups by event_type cheaply
+
+---------------------------------------------------
+
+KEY LEARNINGS:
+- DISTKEY on join columns eliminates network redistribution between nodes (collocated join)
+- SORTKEY enables block pruning — Redshift skips blocks outside the filter range entirely
+- COMPOUND SORTKEY sorts by multiple columns: first column is most selective filter, second refines within
+- DELTA encoding is ideal for dates and timestamps — stores differences, not full values
+- ZSTD gives ~80% reduction on strings; LZO is faster for frequently-read short repeated strings
+- ENCODE RAW on DISTKEY/join columns avoids decompression cost on the hottest-accessed columns
+- ANALYZE COMPRESSION recommends RAW on tiny tables — needs enough data to detect patterns
+- In production: DISTKEY + SORTKEY + compression together can make queries 50-100x faster and 80% cheaper
+
+---------------------------------------------------
+
+COMPRESSION ENCODING REFERENCE:
+
+RAW    - No compression; use on DISTKEY and small integers
+ZSTD   - Best general compression (~80%); use on VARCHAR and NUMERIC
+LZO    - Fast decompression (~70%); use on short repeated strings (event_type, country)
+DELTA  - Stores differences between values; use on DATE, TIMESTAMP, sequential integers
