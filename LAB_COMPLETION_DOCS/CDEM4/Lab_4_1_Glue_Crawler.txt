@@ -1,0 +1,113 @@
+=== LAB 4.1: GLUE DATA CRAWLER & CATALOG SETUP — COMPLETE ===
+Date Completed: 2026-05-02
+AWS Account ID: 108782069549
+Region: us-east-1
+
+==============================================================
+DATABASES CREATED:
+==============================================================
+1. raw_data
+   └─ Purpose: Raw data ingested from source systems. Auto-discovered by crawlers.
+   └─ Tables Discovered: 2
+
+2. processed_data
+   └─ Purpose: Cleaned, validated data. Created from raw data transformations.
+   └─ Tables: [will be populated in Lab 4.2]
+
+==============================================================
+CRAWLERS CONFIGURED:
+==============================================================
+1. raw_data_crawler
+   └─ Source:          s3://data-lake-prod-108782069549/raw/
+   └─ Target Database: raw_data
+   └─ IAM Role:        GlueServiceRole
+   └─ Schedule:        Daily at 02:00 UTC  [cron(0 2 * * ? *)]
+   └─ Last Run:        2026-05-02T11:41:17Z
+   └─ Last Run Status: SUCCEEDED
+   └─ Tables Created:  2
+
+==============================================================
+TABLES IN CATALOG (Auto-discovered):
+==============================================================
+1. customers
+   └─ Location: s3://data-lake-prod-108782069549/raw/customers/
+   └─ Format: CSV
+   └─ Columns (6):
+        - customer_id    (bigint)
+        - name           (string)
+        - email          (string)
+        - country        (string)
+        - created_date   (string)
+        - purchase_amount (double)
+   └─ Records: 5 rows
+   └─ Last Updated: 2026-05-02T11:41:17Z
+
+2. orders
+   └─ Location: s3://data-lake-prod-108782069549/raw/orders/
+   └─ Format: CSV
+   └─ Columns (5):
+        - order_id       (bigint)
+        - customer_id    (bigint)
+        - order_date     (string)
+        - total_amount   (double)
+        - status         (string)
+   └─ Records: 5 rows
+   └─ Last Updated: 2026-05-02T11:41:17Z
+
+==============================================================
+ATHENA QUERIES TESTED:
+==============================================================
+✓ SELECT from raw_data.customers          — 5 rows returned
+✓ GROUP BY country, AVG(purchase_amount)  — 4 countries (US, UK, CA, AU)
+✓ WHERE purchase_amount > 100             — top spenders returned
+✓ SELECT from raw_data.orders             — 5 rows returned
+✓ Query performance: < 1 second per query
+
+Query result location: s3://data-lake-prod-108782069549/temp/athena-results/
+Athena workgroup encryption: SSE-S3
+
+==============================================================
+ISSUES ENCOUNTERED & RESOLVED:
+==============================================================
+1. TABLE_NOT_FOUND on first query
+   └─ Cause: Table names auto-generated as test_customers_csv (with _csv suffix)
+   └─ Fix:   Reorganised files into subfolders (raw/customers/, raw/orders/)
+             so crawler creates directory-level table locations
+
+2. Athena results access denied
+   └─ Cause: Bucket DenyUnencryptedObjectUploads policy blocked Athena writes
+   └─ Fix:   Updated Athena primary workgroup to use SSE-S3 encryption
+
+3. Athena returned 0 rows (Data scanned: -)
+   └─ Cause: Glue table location pointed to specific file path, not a directory
+             prefix. Hive/Athena expects a directory, not a file.
+   └─ Fix:   Moved CSVs to subfolders; crawler re-ran and created
+             directory-level locations
+
+==============================================================
+CRAWLER AUTOMATION VALUE:
+==============================================================
+✓ Manual schema documentation: NO LONGER NEEDED
+✓ Schema updates: Automatic nightly at 02:00 UTC
+✓ New files in raw/: Catalog auto-updates on next crawl
+✓ Data discovery time: From 2+ hours (manual) → 5 minutes (catalog search)
+
+==============================================================
+COSTS:
+==============================================================
+├─ Glue Databases: FREE (metadata storage only)
+├─ Crawler cost: ~$0.44/DPU-hour, typical run 2-5 min = ~$0.02-0.04 per run
+├─ Daily crawls: 30 × $0.04 = ~$1.20/month
+├─ Athena queries: $5 per TB scanned (test files = < $0.001)
+└─ Total estimated: ~$2-5/month
+
+==============================================================
+TERRAFORM RESOURCES (terraform/cdem4/):
+==============================================================
+├─ aws_glue_catalog_database.raw_data
+├─ aws_glue_catalog_database.processed_data
+└─ aws_glue_crawler.raw_data (name: raw_data_crawler)
+
+Remote state dependencies:
+├─ CDEM1: glue_service_role_arn
+└─ CDEM2: data_lake_bucket_id, data_lake_bucket_arn
