@@ -133,3 +133,46 @@ resource "aws_glue_job" "schema_validation" {
     Environment = "Production"
   }
 }
+
+# ============================================================
+# LAB 4.4 — CDC MERGE JOB
+# ============================================================
+
+resource "aws_s3_object" "cdc_merge_script" {
+  bucket                 = var.data_lake_bucket_id
+  key                    = "scripts/glue/order_cdc_merge.py"
+  source                 = "${path.module}/scripts/order_cdc_merge.py"
+  source_hash            = filemd5("${path.module}/scripts/order_cdc_merge.py")
+  content_type           = "text/x-python"
+  server_side_encryption = "AES256"
+}
+
+resource "aws_glue_job" "order_cdc_merge" {
+  name         = "OrderCDCMerge"
+  role_arn     = var.glue_service_role_arn
+  description  = "Applies CDC changes (INSERT/UPDATE/DELETE) to master orders table and writes merged Parquet to S3"
+  glue_version = "4.0"
+  worker_type       = "G.1X"
+  number_of_workers = 2
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://${var.data_lake_bucket_id}/scripts/glue/order_cdc_merge.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--job-bookmark-option"              = "job-bookmark-disable"
+    "--enable-metrics"                   = "true"
+    "--enable-continuous-cloudwatch-log" = "true"
+    "--TempDir"                          = "s3://${var.data_lake_bucket_id}/temp/glue/"
+    "--BUCKET"                           = var.data_lake_bucket_id
+  }
+
+  depends_on = [aws_s3_object.cdc_merge_script]
+
+  tags = {
+    Name        = "OrderCDCMerge"
+    Environment = "Production"
+  }
+}

@@ -1,0 +1,90 @@
+=== LAB 4.4: CDC WITH DMS + INCREMENTAL LOADING ===
+Date: May 2, 2026
+AWS Account ID: 108782069549
+
+---------------------------------------------------
+
+RESOURCES CREATED:
+
+Glue Job:
+- Name: OrderCDCMerge
+- Script: s3://data-lake-prod-108782069549/scripts/glue/order_cdc_merge.py
+- Workers: 2 x G.1X
+- Glue version: 4.0
+
+S3 CDC Data:
+- s3://data-lake-prod-108782069549/cdc/orders/source/source_orders.csv (10 records)
+- s3://data-lake-prod-108782069549/cdc/orders/changes/cdc_insert_batch1.csv (3 INSERTs)
+- s3://data-lake-prod-108782069549/cdc/orders/changes/cdc_update_batch1.csv (3 UPDATEs)
+- s3://data-lake-prod-108782069549/cdc/orders/changes/cdc_delete_batch1.csv (2 DELETEs)
+- s3://data-lake-prod-108782069549/cdc/orders/merged/ (Parquet output, 11 records)
+
+---------------------------------------------------
+
+CDC OPERATION RESULTS:
+
+Source records:        10
+Inserted:            +  3  (orders 11, 12, 13)
+Updated:             ~  3  (orders 3, 4, 6 — status → completed)
+Deleted:             -  2  (orders 2, 8 — canceled)
+Final merged records:  11
+
+Verification:
+- Orders 2 and 8: absent from final dataset (deleted)
+- Orders 3, 4, 6: status changed to completed (updated)
+- Orders 11, 12, 13: present as new records (inserted)
+- No duplicates, no null order_id values
+
+---------------------------------------------------
+
+KEY CONCEPTS:
+
+What is CDC:
+- Change Data Capture = capture only what changed, not everything
+- Reads database transaction logs (MySQL binary logs, PostgreSQL WAL)
+- Produces INSERT (I), UPDATE (U), DELETE (D) records per change
+- Zero additional load on source database (logs already exist)
+
+Full Load vs CDC:
+- Full load: reads entire table every run (wasteful, slow, costly)
+- CDC: reads only changed rows (efficient, near real-time, cheap)
+- Example: 50M rows, 1% change rate
+  - Full load: 50M reads/hour = $1,620/month
+  - CDC: 500K reads/hour = <$1/month
+
+UPDATE Merge Pattern (immutable DataFrames):
+- Spark DataFrames cannot be edited in place
+- Pattern: left_anti join (remove old) + unionByName (add new)
+- left_anti join keeps all rows NOT matching the update keys
+- Union appends the new versions of those rows
+
+DELETE Merge Pattern:
+- left_anti join keeps all rows NOT matching the delete keys
+- Matching rows are permanently excluded from the result
+
+Why Parquet for CDC output:
+- Columnar format: query only needed columns
+- Compressed: ~80% smaller than CSV
+- Typed: no string conversion needed
+- Partition-aware: faster for time-range queries
+
+CDC File Organization:
+- source/: full load snapshot (baseline)
+- changes/: incremental CDC batches (INSERT/UPDATE/DELETE)
+- merged/: final result after applying all changes
+
+---------------------------------------------------
+
+REAL AWS DMS SETUP (production):
+1. RDS MySQL with binary logging enabled (log_bin=1, binlog_format=ROW)
+2. DMS Replication Instance (dms.t3.micro for dev)
+3. Source Endpoint: MySQL RDS
+4. Target Endpoint: S3 (Parquet format)
+5. Replication Task: Migrate and replicate (full load + CDC)
+6. DMS writes CDC files to S3 automatically
+7. Glue job (OrderCDCMerge) reads and applies changes
+
+CDC Patterns:
+- Streaming: RDS → DMS → Kafka → Consumers (seconds latency)
+- Batch: RDS → DMS → S3 → Glue → Redshift (minutes latency, this lab)
+- Hybrid: streaming for orders + batch for customers (most companies)
