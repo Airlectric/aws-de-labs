@@ -78,12 +78,58 @@ resource "aws_glue_job" "customer_etl" {
     "--enable-metrics"                   = "true"
     "--enable-continuous-cloudwatch-log" = "true"
     "--TempDir"                          = "s3://${var.data_lake_bucket_id}/temp/glue/"
+    "--BUCKET"                           = var.data_lake_bucket_id
   }
 
   depends_on = [aws_s3_object.customer_etl_script]
 
   tags = {
     Name        = "CustomerDataETL"
+    Environment = "Production"
+  }
+}
+
+# ============================================================
+# LAB 4.3 — SCHEMA VALIDATION JOB
+# ============================================================
+
+# Upload schema validation script to S3
+resource "aws_s3_object" "schema_validation_script" {
+  bucket                 = var.data_lake_bucket_id
+  key                    = "scripts/glue/customer_schema_validation.py"
+  source                 = "${path.module}/scripts/customer_schema_validation.py"
+  source_hash            = filemd5("${path.module}/scripts/customer_schema_validation.py")
+  content_type           = "text/x-python"
+  server_side_encryption = "AES256"
+}
+
+# Glue job that reads all 3 schema versions and proves they coexist
+resource "aws_glue_job" "schema_validation" {
+  name         = "CustomerSchemaValidation"
+  role_arn     = var.glue_service_role_arn
+  description  = "Reads customer data across schema versions v1.0-v3.0 to validate backwards compatibility"
+  glue_version = "4.0"
+  worker_type       = "G.1X"
+  number_of_workers = 2
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://${var.data_lake_bucket_id}/scripts/glue/customer_schema_validation.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--job-bookmark-option"              = "job-bookmark-disable"
+    "--enable-metrics"                   = "true"
+    "--enable-continuous-cloudwatch-log" = "true"
+    "--TempDir"                          = "s3://${var.data_lake_bucket_id}/temp/glue/"
+    "--BUCKET"                           = var.data_lake_bucket_id
+  }
+
+  depends_on = [aws_s3_object.schema_validation_script]
+
+  tags = {
+    Name        = "CustomerSchemaValidation"
     Environment = "Production"
   }
 }

@@ -1,0 +1,101 @@
+=== LAB 4.3: SCHEMA EVOLUTION & VERSIONING ===
+Date: May 2, 2026
+AWS Account ID: 108782069549
+
+---------------------------------------------------
+
+RESOURCES CREATED:
+
+Schema Registry
+- Registry: data-eng-project-registry
+- Schema name: CustomerSchema
+- Data format: Apache Avro
+- Compatibility mode: BACKWARD
+- ARN: arn:aws:glue:us-east-1:108782069549:schema/data-eng-project-registry/CustomerSchema
+
+Schema Versions:
+- Version 1: customer_id, email, signup_date, country (4 required fields)
+- Version 2: + phone (optional, ["null","string"], default null)
+- Version 3: + subscription_tier (optional, ["null","string"], default null)
+
+Glue Job:
+- Name: CustomerSchemaValidation
+- Script: s3://data-lake-prod-108782069549/scripts/glue/customer_schema_validation.py
+- Workers: 2 x G.1X
+- Glue version: 4.0
+
+S3 Sample Data:
+- s3://data-lake-prod-108782069549/schemas/v1.0/customers_v1.json (3 records)
+- s3://data-lake-prod-108782069549/schemas/v2.0/customers_v2.json (3 records)
+- s3://data-lake-prod-108782069549/schemas/v3.0/customers_v3.json (3 records)
+
+---------------------------------------------------
+
+SCHEMA DESIGN CHOICES:
+
+Version 1.0 (Launch):
+- Four required fields covering core customer identity
+- All fields type: string for simplicity
+
+Version 2.0 (Backwards compatible):
+- Added phone as optional (["null","string"] union, default null)
+- Why safe: old records without phone are still valid — null filled automatically
+- Old code reading new data still works
+
+Version 3.0 (Backwards compatible):
+- Added subscription_tier as optional (["null","string"] union, default null)
+- Why safe: same pattern as v2.0 — additive only change
+- All 3 versions readable by same code
+
+---------------------------------------------------
+
+JOB RESULTS:
+
+[TEST 1] v1.0 data: 3 records read successfully
+- phone = null (missing field filled automatically)
+- subscription_tier = null (missing field filled automatically)
+
+[TEST 2] v2.0 data: 3 records read successfully
+- phone populated for records with it, null for C005
+- subscription_tier = null (field not yet in this version)
+
+[TEST 3] v3.0 data: 3 records read successfully
+- Both phone and subscription_tier populated
+
+[COMBINING] All versions merged: 9 records total
+- unionByName(allowMissingColumns=True) merges schemas across versions
+- Single combined dataset spans all schema versions without errors
+
+---------------------------------------------------
+
+KEY LEARNINGS:
+
+Backwards Compatibility Rules:
+- SAFE: Add optional field (old data still valid, new field = null)
+- SAFE: Remove optional field (old data ignores it)
+- BREAKING: Add required field (old data missing it fails validation)
+- BREAKING: Remove required field (code expecting it breaks)
+- BREAKING: Rename required field (old code can't find it)
+
+Avro Union Type:
+- ["null","string"] = optional field (null or string)
+- First type in union determines default type
+- default must match the first type: ["null","string"] → default: null
+- To use string default: ["string","null"] → default: "free"
+
+BACKWARD Compatibility Mode:
+- New schema versions must be readable by old code
+- Ensures no pipeline breaks when schema evolves
+- Best choice for production data pipelines
+
+Glue Job Parameters:
+- Bucket name passed via --BUCKET job argument (not hardcoded)
+- Retrieved in PySpark via getResolvedOptions(sys.argv, ['BUCKET'])
+- Makes scripts portable across accounts and environments
+
+---------------------------------------------------
+
+TEARDOWN:
+- CustomerSchemaValidation Glue job: keep (no ongoing cost)
+- CustomerSchema in registry: keep (needed for Lab 4.4)
+- S3 sample data: keep (minimal cost, used for reference)

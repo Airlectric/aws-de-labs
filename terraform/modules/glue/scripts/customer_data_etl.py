@@ -7,15 +7,14 @@ from awsglue.job import Job
 from pyspark.sql.functions import *
 
 # Initialize Glue
-args = getResolvedOptions(sys.argv, ['JOB_NAME'])
+args = getResolvedOptions(sys.argv, ['JOB_NAME', 'BUCKET'])
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
-ACCOUNT_ID = "108782069549"
-BUCKET_NAME = f"data-lake-prod-{ACCOUNT_ID}"
+BUCKET_NAME = args['BUCKET']
 RAW_PATH = f"s3://{BUCKET_NAME}/raw/customers/"
 PROCESSED_PATH = f"s3://{BUCKET_NAME}/processed/customers/"
 
