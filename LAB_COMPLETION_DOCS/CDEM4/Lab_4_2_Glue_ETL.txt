@@ -1,0 +1,137 @@
+=== LAB 4.2: GLUE ETL WITH PYSPARK — COMPLETE ===
+Date Completed: 2026-05-02
+AWS Account ID: 108782069549
+Region: us-east-1
+
+==============================================================
+JOB CREATED:
+==============================================================
+Job Name:        CustomerDataETL
+IAM Role:        GlueServiceRole
+Type:            Spark (PySpark)
+Glue Version:    4.0  (Spark 3.3, Python 3.10)
+Worker Type:     G.1X  (4 vCPU / 16 GB per worker)
+DPU Allocation:  2
+Script Location: s3://data-lake-prod-108782069549/scripts/glue/customer_data_etl.py
+Job Bookmark:    Disabled (always re-reads for testing)
+
+==============================================================
+INPUT DATA (raw/customers/customers.csv):
+==============================================================
+Intentional messiness in source data:
+  - Row 4:  Duplicate C001 with uppercase email (JOHN@EXAMPLE.COM)
+  - Row 5:  Missing country value (empty string)
+  - Row 6:  Date in wrong format (01/15/2024 instead of yyyy-MM-dd)
+  - Row 7:  Country lowercase (us instead of US)
+  - Row 8:  Duplicate C002 with country spelled out (Canada vs CA)
+Total rows: 10
+
+==============================================================
+TRANSFORMATIONS APPLIED:
+==============================================================
+1. Remove duplicates on customer_id      → kept first occurrence
+2. Lowercase email                       → consistent format for joins
+3. Uppercase country                     → consistent format for aggregations
+4. Fill null/empty status → "unknown"   → no nulls in output
+5. Parse signup_date (yyyy-MM-dd)        → consistent date format
+6. Add processed_at timestamp            → tracks when record was cleaned
+7. Add data_quality_score = 0.95         → metadata for downstream consumers
+
+==============================================================
+JOB EXECUTION RESULTS:
+==============================================================
+Run Status:      SUCCEEDED
+Start Time:      2026-05-02T15:04:56Z
+End Time:        2026-05-02T15:05:32Z
+Duration:        ~36 seconds (including cluster startup)
+DPU Hours:       2 DPUs × ~0.6 min / 60 = ~0.02 DPU-hours
+Cost:            ~$0.004
+
+√ Rows read:                10
+√ Duplicates removed:        2
+√ Rows after deduplication:  8
+√ Rows written:              8
+
+==============================================================
+SAMPLE OUTPUT (first 5 rows):
+==============================================================
+customer_id | email               | signup_date | country | status   | data_quality_score
+C001        | john@example.com    | 2024-01-15  | US      | active   | 0.95
+C002        | jane@example.com    | 2024-01-20  | CA      | active   | 0.95
+C003        | bob@example.com     | 2024-01-25  | US      | inactive | 0.95
+C004        | alice@example.com   | 2024-02-01  | null    | unknown  | 0.95
+C005        | charlie@example.com | null        | US      | unknown  | 0.95
+
+Notes on output:
+  - C004 country = null: original was empty string, upper("") = null in Spark
+  - C005 signup_date = null: "01/15/2024" did not match yyyy-MM-dd format,
+    to_date() returns null silently when format mismatches (no error thrown)
+
+==============================================================
+OUTPUT LOCATION (S3):
+==============================================================
+s3://data-lake-prod-108782069549/processed/customers/
+  └─ part-00000-c026dd4a-5d26-4246-a3ad-5b64f472fae2-c000.snappy.parquet
+
+Format:      Parquet (Snappy compressed)
+Why Parquet: Columnar format — Athena reads only requested columns.
+             Same data: CSV = 479 bytes → Parquet = 2.3 KB (tiny data,
+             but at TB scale Parquet is 10-20x smaller than CSV)
+
+==============================================================
+ISSUES ENCOUNTERED & RESOLVED:
+==============================================================
+1. First run: AccessDenied on s3:PutObject for GlueServiceRole
+   └─ Cause: DenyUnencryptedObjectUploads bucket policy blocked Spark
+             writes because Spark does not send the SSE header
+   └─ Fix:   Added GlueServiceRole to ArnNotLike exclusion in
+             bucket policy (consistent with DataSyncS3Role and
+             KinesisFirehoseS3Role). Bucket default SSE-S3 still
+             encrypts all writes automatically.
+
+2. aws_s3_object folder placeholders failing on terraform apply
+   └─ Cause: Same SSE header issue for daniel-admin IAM user
+   └─ Fix:   Added server_side_encryption = "AES256" to all
+             aws_s3_object resources in the S3 module
+
+3. DataSync EC2 destroyed on re-apply
+   └─ Cause: data "aws_ami" most_recent=true re-evaluated on each
+             apply, new AMI ID triggered EC2 replacement
+   └─ Fix:   Pinned AMI ID to ami-02b9a589195146a8f in datasync module
+
+==============================================================
+ETL PATTERNS LEARNED:
+==============================================================
+Pattern 1: Data Lake Zone Model
+  raw/ (CSV, as-is) → processed/ (Parquet, cleaned) → curated/ (business-ready)
+
+Pattern 2: Schema on Read
+  spark.read.csv(..., inferSchema=True) — infer types at read time,
+  flexible for messy data. Alternative: enforce schema on read (stricter).
+
+Pattern 3: Idempotent Jobs
+  df.write.mode("overwrite") — same result if run twice.
+  Safe to re-run on failure. No duplicate data accumulation.
+
+Pattern 4: Detailed Logging
+  Print at each stage [1/3], [2/3], [3/3] — easy to debug failures
+  in CloudWatch without downloading logs.
+
+==============================================================
+COSTS:
+==============================================================
+├─ Glue job: $0.22/DPU-hour × 2 DPUs × 0.01 hours = ~$0.004/run
+├─ Script storage in S3: negligible (<1 KB)
+├─ Parquet output in S3: negligible (2.3 KB)
+└─ Total per run: ~$0.004
+
+==============================================================
+TERRAFORM RESOURCES (terraform/cdem4/ → modules/glue):
+==============================================================
+├─ aws_s3_object.customer_etl_script   (uploads script to S3)
+└─ aws_glue_job.customer_etl           (job: CustomerDataETL)
+
+Dependencies:
+├─ depends_on: aws_s3_object.customer_etl_script (script uploaded before job created)
+├─ CDEM1 remote state: glue_service_role_arn
+└─ CDEM2 remote state: data_lake_bucket_id

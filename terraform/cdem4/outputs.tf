@@ -12,3 +12,8 @@ output "raw_crawler_name" {
   description = "raw_data_crawler name"
   value       = module.glue.raw_crawler_name
 }
+
+output "customer_etl_job_name" {
+  description = "CustomerDataETL Glue job name"
+  value       = module.glue.customer_etl_job_name
+}

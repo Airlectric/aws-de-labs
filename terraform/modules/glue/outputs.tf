@@ -12,3 +12,8 @@ output "raw_crawler_name" {
   description = "Glue crawler that scans raw/ prefix"
   value       = aws_glue_crawler.raw_data.name
 }
+
+output "customer_etl_job_name" {
+  description = "CustomerDataETL Glue job name"
+  value       = aws_glue_job.customer_etl.name
+}

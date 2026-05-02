@@ -4,17 +4,8 @@
 # this would be a physical server connected via VPN or
 # Direct Connect. Here we simulate it with EC2.
 # ============================================================
-data "aws_ami" "amazon_linux_2" {
-  most_recent = true
-  owners      = ["amazon"]
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-  }
-}
-
 resource "aws_instance" "datasync_server" {
-  ami                         = data.aws_ami.amazon_linux_2.id
+  ami                         = "ami-02b9a589195146a8f"
   instance_type               = "t2.micro"
   subnet_id                   = var.private_subnet_1b_id
   vpc_security_group_ids      = [var.sg_private_compute_id]

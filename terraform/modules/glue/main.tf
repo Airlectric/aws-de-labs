@@ -41,3 +41,49 @@ resource "aws_glue_crawler" "raw_data" {
     Environment = "Production"
   }
 }
+
+# ============================================================
+# LAB 4.2 — GLUE ETL JOB
+# ============================================================
+
+# Step 1: Upload PySpark script to S3
+# Glue pulls this at job start — source_hash re-uploads whenever
+# the file content changes (acts like a checksum).
+resource "aws_s3_object" "customer_etl_script" {
+  bucket                 = var.data_lake_bucket_id
+  key                    = "scripts/glue/customer_data_etl.py"
+  source                 = "${path.module}/scripts/customer_data_etl.py"
+  source_hash            = filemd5("${path.module}/scripts/customer_data_etl.py")
+  content_type           = "text/x-python"
+  server_side_encryption = "AES256"
+}
+
+# Step 2: Glue ETL job
+resource "aws_glue_job" "customer_etl" {
+  name         = "CustomerDataETL"
+  role_arn     = var.glue_service_role_arn
+  description  = "Reads messy customer CSVs from raw/, deduplicates, standardizes, writes Parquet to processed/"
+  glue_version = "4.0"
+  worker_type       = "G.1X"
+  number_of_workers = 2
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://${var.data_lake_bucket_id}/scripts/glue/customer_data_etl.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--job-bookmark-option"              = "job-bookmark-disable"
+    "--enable-metrics"                   = "true"
+    "--enable-continuous-cloudwatch-log" = "true"
+    "--TempDir"                          = "s3://${var.data_lake_bucket_id}/temp/glue/"
+  }
+
+  depends_on = [aws_s3_object.customer_etl_script]
+
+  tags = {
+    Name        = "CustomerDataETL"
+    Environment = "Production"
+  }
+}
